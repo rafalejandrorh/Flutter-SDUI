@@ -1,0 +1,49 @@
+{
+  "type": "scaffold",
+  "appBar": {
+    "type": "appBar",
+    "title": {
+      "type": "text",
+      "data": "Details"
+    },
+    "leading": {
+      "type": "iconButton",
+      "icon": {
+        "type": "icon",
+        "icon": "arrow_back"
+      },
+      "onPressed": {
+        "actionType": "navigate",
+        "navigationStyle": "pop"
+      }
+    }
+  },
+  "body": {
+    "type": "center",
+    "child": {
+      "type": "column",
+      "mainAxisSize": "min",
+      "children": [
+        {
+          "type": "text",
+          "data": "This screen was opened from JSON."
+        },
+        {
+          "type": "sizedBox",
+          "height": 24
+        },
+        {
+          "type": "filledButton",
+          "child": {
+            "type": "text",
+            "data": "Back"
+          },
+          "onPressed": {
+            "actionType": "navigate",
+            "navigationStyle": "pop"
+          }
+        }
+      ]
+    }
+  }
+}

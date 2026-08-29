@@ -1,0 +1,96 @@
+{
+  "type": "scaffold",
+  "appBar": {
+    "type": "appBar",
+    "title": {
+      "type": "text",
+      "data": "Profile"
+    },
+    "leading": {
+      "type": "iconButton",
+      "icon": {
+        "type": "icon",
+        "icon": "arrow_back"
+      },
+      "onPressed": {
+        "actionType": "navigate",
+        "navigationStyle": "pop"
+      }
+    }
+  },
+  "body": {
+    "type": "padding",
+    "padding": 24,
+    "child": {
+      "type": "form",
+      "autovalidateMode": "onUserInteraction",
+      "child": {
+        "type": "column",
+        "crossAxisAlignment": "stretch",
+        "children": [
+          {
+            "type": "textFormField",
+            "id": "name",
+            "decoration": {
+              "labelText": "Name"
+            },
+            "validatorRules": [
+              {
+                "rule": "isLength",
+                "options": {
+                  "min": 2
+                },
+                "message": "Enter your name"
+              }
+            ]
+          },
+          {
+            "type": "sizedBox",
+            "height": 16
+          },
+          {
+            "type": "textFormField",
+            "id": "email",
+            "keyboardType": "emailAddress",
+            "decoration": {
+              "labelText": "Email"
+            },
+            "validatorRules": [
+              {
+                "rule": "isEmail"
+              }
+            ]
+          },
+          {
+            "type": "sizedBox",
+            "height": 24
+          },
+          {
+            "type": "filledButton",
+            "child": {
+              "type": "text",
+              "data": "Submit"
+            },
+            "onPressed": {
+              "actionType": "validateForm",
+              "isValid": {
+                "actionType": "showDialog",
+                "widget": {
+                  "type": "text",
+                  "data": "Looks good. The API will receive this in phase 2."
+                }
+              },
+              "isNotValid": {
+                "actionType": "showDialog",
+                "widget": {
+                  "type": "text",
+                  "data": "Check the highlighted fields."
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

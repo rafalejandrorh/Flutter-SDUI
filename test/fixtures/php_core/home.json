@@ -1,0 +1,79 @@
+{
+  "type": "scaffold",
+  "appBar": {
+    "type": "appBar",
+    "title": {
+      "type": "text",
+      "data": "Home"
+    }
+  },
+  "body": {
+    "type": "padding",
+    "padding": 24,
+    "child": {
+      "type": "column",
+      "crossAxisAlignment": "stretch",
+      "children": [
+        {
+          "type": "text",
+          "data": "Welcome",
+          "style": {
+            "fontSize": 24
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 12
+        },
+        {
+          "type": "text",
+          "data": "These screens are bundled Stac JSON. Later they will come from the server."
+        },
+        {
+          "type": "sizedBox",
+          "height": 24
+        },
+        {
+          "type": "filledButton",
+          "child": {
+            "type": "text",
+            "data": "View details"
+          },
+          "onPressed": {
+            "actionType": "sduiNavigate",
+            "screen": "details"
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 12
+        },
+        {
+          "type": "filledButton",
+          "child": {
+            "type": "text",
+            "data": "Profile form"
+          },
+          "onPressed": {
+            "actionType": "sduiNavigate",
+            "screen": "form"
+          }
+        },
+        {
+          "type": "sizedBox",
+          "height": 24
+        },
+        {
+          "type": "textButton",
+          "child": {
+            "type": "text",
+            "data": "Sign out"
+          },
+          "onPressed": {
+            "actionType": "sduiLogout"
+          }
+        }
+      ]
+    }
+  }
+}

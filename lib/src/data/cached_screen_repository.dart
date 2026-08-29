@@ -27,9 +27,11 @@ class CachedScreenRepository implements ScreenChangeSource {
 
   @override
   Stream<ScreenDocument> watch(String name) {
-    return _controllers
-        .putIfAbsent(name, () => StreamController<ScreenDocument>.broadcast())
-        .stream;
+    return _controllers.putIfAbsent(name, _newBroadcastController).stream;
+  }
+
+  static StreamController<ScreenDocument> _newBroadcastController() {
+    return StreamController<ScreenDocument>.broadcast();
   }
 
   @override
@@ -64,7 +66,7 @@ class CachedScreenRepository implements ScreenChangeSource {
         }
         return document;
       } finally {
-        _inflight.remove(name);
+        unawaited(_inflight.remove(name));
       }
     });
   }
@@ -137,5 +139,16 @@ class CachedScreenRepository implements ScreenChangeSource {
 
   bool _same(ScreenDocument a, ScreenDocument b) {
     return a.schemaVersion == b.schemaVersion && mapEquals(a.body, b.body);
+  }
+
+  /// Closes SWR watchers. Optional; process-lifetime repositories can skip this.
+  Future<void> dispose() async {
+    final controllers = List<StreamController<ScreenDocument>>.of(
+      _controllers.values,
+    );
+    _controllers.clear();
+    for (final controller in controllers) {
+      await controller.close();
+    }
   }
 }

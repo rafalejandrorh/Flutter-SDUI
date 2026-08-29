@@ -91,12 +91,12 @@ class _SduiScreenState extends State<SduiScreen> {
 
   @override
   void dispose() {
-    _watchSub?.cancel();
+    _cancelWatch();
     super.dispose();
   }
 
   void _subscribe() {
-    _watchSub?.cancel();
+    _cancelWatch();
     final repository = _repository;
     if (repository is ScreenChangeSource) {
       _watchSub = repository.watch(widget.name).listen((document) {
@@ -110,6 +110,13 @@ class _SduiScreenState extends State<SduiScreen> {
         });
       });
       return;
+    }
+  }
+
+  void _cancelWatch() {
+    final sub = _watchSub;
+    if (sub != null) {
+      unawaited(sub.cancel());
     }
     _watchSub = null;
   }
