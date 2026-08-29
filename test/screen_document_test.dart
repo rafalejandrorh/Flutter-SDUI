@@ -60,5 +60,54 @@ void main() {
         throwsA(isA<SduiLoadFailedException>()),
       );
     });
+
+    test('rejects a negative schemaVersion', () {
+      expect(
+        () => ScreenDocument.parse({
+          'schemaVersion': -1,
+          'body': {'type': 'text', 'data': 'nope'},
+        }, name: 'home'),
+        throwsA(isA<SduiLoadFailedException>()),
+      );
+    });
+
+    test('accepts a whole-number schemaVersion encoded as a double', () {
+      final document = ScreenDocument.parse({
+        'schemaVersion': 1.0,
+        'body': {'type': 'text', 'data': 'ok'},
+      }, name: 'home');
+
+      expect(document.schemaVersion, 1);
+      expect(document.body['data'], 'ok');
+    });
+
+    test('rejects an envelope body without a Stac type', () {
+      expect(
+        () => ScreenDocument.parse({
+          'schemaVersion': 1,
+          'body': {'foo': 'bar'},
+        }, name: 'home'),
+        throwsA(isA<SduiLoadFailedException>()),
+      );
+    });
+
+    test('uses the requested name when the envelope omits name', () {
+      final document = ScreenDocument.parse({
+        'schemaVersion': 1,
+        'body': {'type': 'text', 'data': 'ok'},
+      }, name: 'home');
+
+      expect(document.name, 'home');
+    });
+
+    test('rejects a non-numeric schemaVersion', () {
+      expect(
+        () => ScreenDocument.parse({
+          'schemaVersion': 'one',
+          'body': {'type': 'text', 'data': 'nope'},
+        }, name: 'home'),
+        throwsA(isA<SduiLoadFailedException>()),
+      );
+    });
   });
 }

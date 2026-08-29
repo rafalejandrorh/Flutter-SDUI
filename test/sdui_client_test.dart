@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sdui_client/sdui_client.dart';
+import 'package:sdui_client/src/auth/auth_interceptor.dart';
 
 import 'support/fakes.dart';
 
@@ -28,6 +29,25 @@ void main() {
       expect(SduiRoutes.screenNameFromPath('/sdui/home'), 'home');
       expect(SduiRoutes.screenNameFromPath('/login'), isNull);
       expect(SduiRoutes.screenPrefix, '/sdui');
+    });
+
+    test('rejects empty and nested screen names', () {
+      expect(SduiRoutes.screenNameFromPath('/sdui/'), isNull);
+      expect(SduiRoutes.screenNameFromPath('/sdui/a/b'), isNull);
+    });
+  });
+
+  group('Sdui facade', () {
+    test('throws StateError before initialize', () {
+      Sdui.reset();
+      expect(Sdui.isInitialized, isFalse);
+      expect(() => Sdui.client, throwsA(isA<StateError>()));
+      expect(() => Sdui.config, throwsA(isA<StateError>()));
+      expect(() => Sdui.dio, throwsA(isA<StateError>()));
+      expect(() => Sdui.repository, throwsA(isA<StateError>()));
+      expect(() => Sdui.renderer, throwsA(isA<StateError>()));
+      expect(() => Sdui.observer, throwsA(isA<StateError>()));
+      expect(() => Sdui.viewPolicy, throwsA(isA<StateError>()));
     });
   });
 
@@ -108,9 +128,91 @@ void main() {
 
       expect(Sdui.repository, isA<NetworkScreenRepository>());
     });
+
+    test('registers SduiAuthInterceptor when tokenStore is set', () async {
+      final store = MemoryTokenStore();
+      await store.write('tok');
+      var unauthorized = 0;
+
+      await Sdui.initialize(
+        config: SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'http://127.0.0.1:8000',
+          tokenStore: store,
+          onUnauthorized: () => unauthorized++,
+        ),
+        renderer: const FakeRenderer(),
+      );
+
+      expect(
+        Sdui.dio.interceptors.whereType<SduiAuthInterceptor>(),
+        isNotEmpty,
+      );
+      expect(unauthorized, 0);
+      expect(Sdui.isInitialized, isTrue);
+      expect(Sdui.config.baseUrl, 'http://127.0.0.1:8000');
+      expect(Sdui.observer, isA<SduiObserver>());
+      expect(Sdui.viewPolicy, isA<SduiViewPolicy>());
+    });
   });
 
   group('action parsers', () {
+    test('sduiNavigate getModel defaults style to push', () {
+      final parser = SduiNavigateActionParser(
+        onNavigate: (context, screen, {style = 'push'}) {},
+      );
+
+      expect(parser.actionType, 'sduiNavigate');
+      final model = parser.getModel({'screen': 'details'});
+      expect(model.screen, 'details');
+      expect(model.style, 'push');
+    });
+
+    test('sduiLogout getModel ignores JSON', () {
+      final parser = SduiLogoutActionParser();
+
+      expect(parser.actionType, 'sduiLogout');
+      expect(parser.getModel({'ignored': true}), isA<SduiLogoutAction>());
+    });
+
+    testWidgets(
+      'sduiNavigate without onNavigateScreen hits the bootstrap StateError',
+      (tester) async {
+        addTearDown(Sdui.reset);
+        final observer = RecordingObserver();
+
+        await Sdui.initialize(
+          config: SduiConfig(
+            source: SduiScreenSource.asset,
+            observer: observer,
+            screenRepository: MemoryScreenRepository({
+              'home': {
+                'type': 'filledButton',
+                'child': {'type': 'text', 'data': 'Go'},
+                'onPressed': {
+                  'actionType': 'sduiNavigate',
+                  'screen': 'details',
+                },
+              },
+            }),
+          ),
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(home: SduiScreen(name: 'home')),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Go'));
+        await tester.pump();
+
+        expect(observer.actions, ['sduiNavigate']);
+        // Stac catches the default onNavigateScreen StateError and logs it.
+        expect(tester.takeException(), isNull);
+        expect(find.text('Go'), findsOneWidget);
+      },
+    );
+
     testWidgets('sduiNavigate calls the injected callback, not Sdui.config', (
       tester,
     ) async {
@@ -190,6 +292,21 @@ void main() {
       expect(
         repository.load('home'),
         throwsA(isA<SduiUnsupportedVersionException>()),
+      );
+    });
+
+    test('throws SduiLoadFailedException for an unknown screen', () async {
+      final repository = MemoryScreenRepository({});
+
+      expect(
+        repository.load('missing'),
+        throwsA(
+          isA<SduiLoadFailedException>().having(
+            (e) => e.message,
+            'message',
+            contains('Unknown screen'),
+          ),
+        ),
       );
     });
   });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sdui_client/sdui_client.dart';
 
@@ -76,6 +78,83 @@ void main() {
       expect((await updated).body['data'], 'v2');
       expect((await repo.cache.read('home'))!.etag, '"v2"');
     });
+
+    test('throws when a 304 arrives with an empty cache', () async {
+      final inner = _FakeConditional(
+        json: {'type': 'text', 'data': 'v1'},
+        etag: '"abc"',
+      )..returnNotModified = true;
+      final repo = CachedScreenRepository(inner: inner);
+
+      expect(repo.load('home'), throwsA(isA<SduiLoadFailedException>()));
+    });
+
+    test('throws when a fresh fetch has no document', () async {
+      final repo = CachedScreenRepository(inner: _NullDocumentConditional());
+
+      expect(repo.load('home'), throwsA(isA<SduiLoadFailedException>()));
+    });
+
+    test('keeps serving stale when revalidation fails', () async {
+      final inner = _FakeConditional(
+        json: {'type': 'text', 'data': 'v1'},
+        etag: '"v1"',
+      );
+      final repo = CachedScreenRepository(inner: inner);
+
+      await repo.load('home');
+      inner.throwOnFetch = true;
+
+      final second = await repo.load('home');
+      await pumpEventQueue();
+
+      expect(second.body['data'], 'v1');
+      expect((await repo.cache.read('home'))!.document.body['data'], 'v1');
+    });
+
+    test('dispose closes SWR watchers', () async {
+      final repo = CachedScreenRepository(
+        inner: MemoryScreenRepository({
+          'home': {'type': 'text', 'data': 'v1'},
+        }),
+      );
+      final done = Completer<void>();
+      final sub = repo.watch('home').listen((_) {}, onDone: done.complete);
+
+      await repo.dispose();
+      await done.future;
+      await sub.cancel();
+    });
+  });
+
+  group('MemoryScreenCache', () {
+    test('removes a single entry and clears the rest', () async {
+      final cache = MemoryScreenCache();
+      final home = ScreenCacheEntry(
+        document: ScreenDocument.parse({
+          'type': 'text',
+          'data': 'home',
+        }, name: 'home'),
+        storedAt: DateTime.now(),
+      );
+      final details = ScreenCacheEntry(
+        document: ScreenDocument.parse({
+          'type': 'text',
+          'data': 'details',
+        }, name: 'details'),
+        storedAt: DateTime.now(),
+      );
+
+      await cache.write('home', home);
+      await cache.write('details', details);
+      await cache.remove('home');
+
+      expect(await cache.read('home'), isNull);
+      expect(await cache.read('details'), isNotNull);
+
+      await cache.clear();
+      expect(await cache.read('details'), isNull);
+    });
   });
 }
 
@@ -99,6 +178,7 @@ class _FakeConditional implements ConditionalScreenRepository {
   Map<String, dynamic> json;
   String etag;
   bool returnNotModified = false;
+  bool throwOnFetch = false;
   int fetches = 0;
   String? lastIfNoneMatch;
 
@@ -112,6 +192,9 @@ class _FakeConditional implements ConditionalScreenRepository {
   Future<ScreenFetch> fetch(String name, {String? ifNoneMatch}) async {
     fetches++;
     lastIfNoneMatch = ifNoneMatch;
+    if (throwOnFetch) {
+      throw Exception('revalidate failed');
+    }
     if (returnNotModified) {
       return ScreenFetch.notModified(etag: etag);
     }
@@ -122,5 +205,17 @@ class _FakeConditional implements ConditionalScreenRepository {
       ),
       etag: etag,
     );
+  }
+}
+
+class _NullDocumentConditional implements ConditionalScreenRepository {
+  @override
+  Future<ScreenDocument> load(String name) async {
+    throw StateError('load() is not used; fetch is overridden.');
+  }
+
+  @override
+  Future<ScreenFetch> fetch(String name, {String? ifNoneMatch}) async {
+    return const ScreenFetch(notModified: false);
   }
 }

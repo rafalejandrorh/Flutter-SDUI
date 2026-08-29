@@ -327,6 +327,66 @@ void main() {
       expect(find.text('Home screen'), findsNothing);
     });
 
+    testWidgets('reloads when the repository instance changes', (tester) async {
+      final first = MemoryScreenRepository({
+        'home': {'type': 'text', 'data': 'from first'},
+      });
+      final second = MemoryScreenRepository({
+        'home': {'type': 'text', 'data': 'from second'},
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SduiScreen(
+            name: 'home',
+            repository: first,
+            renderer: const FakeRenderer(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('from first'), findsOneWidget);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SduiScreen(
+            name: 'home',
+            repository: second,
+            renderer: const FakeRenderer(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('from second'), findsOneWidget);
+      expect(find.text('from first'), findsNothing);
+    });
+
+    testWidgets('notifies the observer on a failed load', (tester) async {
+      final observer = RecordingObserver();
+      final repository = MemoryScreenRepository()
+        ..errorForNextLoad = const SduiLoadFailedException(
+          'boom',
+          screen: 'home',
+        );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SduiScreen(
+            name: 'home',
+            repository: repository,
+            renderer: const FakeRenderer(),
+            observer: observer,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('boom'), findsOneWidget);
+      expect(observer.errors, ['home']);
+      expect(observer.loads, isEmpty);
+    });
+
     testWidgets('falls back to the facade repository and renderer', (
       tester,
     ) async {

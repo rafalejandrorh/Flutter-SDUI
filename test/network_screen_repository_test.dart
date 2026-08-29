@@ -97,5 +97,117 @@ void main() {
 
       expect(repo.load('home'), throwsA(isA<SduiLoadFailedException>()));
     });
+
+    test('load() treats 304 as a load failure', () async {
+      final dio = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.resolve(
+                Response<dynamic>(
+                  requestOptions: options,
+                  statusCode: 304,
+                  headers: Headers.fromMap({
+                    'etag': ['"abc"'],
+                  }),
+                ),
+              );
+            },
+          ),
+        );
+
+      final repo = NetworkScreenRepository(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'https://api.example.com',
+        ),
+        dio: dio,
+      );
+
+      expect(repo.load('home'), throwsA(isA<SduiLoadFailedException>()));
+    });
+
+    test('parses a JSON object sent as a string body', () async {
+      final dio = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.resolve(
+                Response<dynamic>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: '{"type":"text","data":"from string"}',
+                ),
+              );
+            },
+          ),
+        );
+
+      final repo = NetworkScreenRepository(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'https://api.example.com',
+        ),
+        dio: dio,
+      );
+
+      final result = await repo.fetch('home');
+      expect(result.document!.body['data'], 'from string');
+    });
+
+    test('copies a generic Map body', () async {
+      final dio = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.resolve(
+                Response<dynamic>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: <dynamic, dynamic>{'type': 'text', 'data': 'from map'},
+                ),
+              );
+            },
+          ),
+        );
+
+      final repo = NetworkScreenRepository(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'https://api.example.com',
+        ),
+        dio: dio,
+      );
+
+      final result = await repo.fetch('home');
+      expect(result.document!.body['data'], 'from map');
+    });
+
+    test('wraps a non-object body as SduiLoadFailedException', () async {
+      final dio = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.resolve(
+                Response<dynamic>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: ['not', 'an', 'object'],
+                ),
+              );
+            },
+          ),
+        );
+
+      final repo = NetworkScreenRepository(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'https://api.example.com',
+        ),
+        dio: dio,
+      );
+
+      expect(repo.fetch('home'), throwsA(isA<SduiLoadFailedException>()));
+    });
   });
 }
