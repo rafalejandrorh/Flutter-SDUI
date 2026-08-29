@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sdui_client/sdui_client.dart';
@@ -82,6 +84,30 @@ void main() {
         expect(document.schemaVersion, ScreenDocument.legacySchemaVersion);
       },
     );
+
+    test('wraps the default network repository with cache', () async {
+      await Sdui.initialize(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'http://127.0.0.1:8000',
+        ),
+        renderer: _FakeRenderer(),
+      );
+
+      expect(Sdui.repository, isA<CachedScreenRepository>());
+    });
+
+    test('skips cache when cacheScreens is false', () async {
+      await Sdui.initialize(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          cacheScreens: false,
+        ),
+        renderer: _FakeRenderer(),
+      );
+
+      expect(Sdui.repository, isA<NetworkScreenRepository>());
+    });
   });
 
   group('action parsers', () {
@@ -213,6 +239,57 @@ void main() {
       expect(observer.errors, isEmpty);
     });
 
+    testWidgets('uses SduiViewPolicy copies on error', (tester) async {
+      final repository = MemoryScreenRepository()
+        ..errorForNextLoad = const SduiLoadFailedException(
+          'boom',
+          screen: 'home',
+        );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SduiScreen(
+            name: 'home',
+            repository: repository,
+            renderer: _FakeRenderer(),
+            viewPolicy: const SduiViewPolicy(
+              errorMessage: 'Pantalla no disponible',
+              retryLabel: 'Reintentar',
+              showErrorDetails: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pantalla no disponible'), findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+    });
+
+    testWidgets('applies a SWR update from ScreenChangeSource', (tester) async {
+      final repository = _StreamingRepo({
+        'home': {'type': 'text', 'data': 'v1'},
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SduiScreen(
+            name: 'home',
+            repository: repository,
+            renderer: _FakeRenderer(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('v1'), findsOneWidget);
+
+      repository.emit('home', {'type': 'text', 'data': 'v2'});
+      await tester.pumpAndSettle();
+
+      expect(find.text('v2'), findsOneWidget);
+    });
+
     testWidgets('shows a fallback when the renderer fails', (tester) async {
       final observer = _RecordingObserver();
       final repository = MemoryScreenRepository({
@@ -282,6 +359,20 @@ class _ThrowingRenderer implements SduiRenderer {
   @override
   Widget? render(BuildContext context, ScreenDocument document) {
     throw StateError('Unable to render screen "${document.name}"');
+  }
+}
+
+class _StreamingRepo extends MemoryScreenRepository
+    implements ScreenChangeSource {
+  _StreamingRepo(super.screens);
+
+  final _controller = StreamController<ScreenDocument>.broadcast(sync: true);
+
+  @override
+  Stream<ScreenDocument> watch(String name) => _controller.stream;
+
+  void emit(String name, Map<String, dynamic> json) {
+    _controller.add(ScreenDocument.parse(json, name: name));
   }
 }
 

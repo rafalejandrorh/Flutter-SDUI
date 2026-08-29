@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../domain/screen_document.dart';
@@ -6,6 +8,7 @@ import '../ports/screen_repository.dart';
 import '../ports/sdui_observer.dart';
 import '../ports/sdui_renderer.dart';
 import '../sdui.dart';
+import 'sdui_view_policy.dart';
 
 /// Loads a named SDUI screen and renders it.
 class SduiScreen extends StatefulWidget {
@@ -15,6 +18,7 @@ class SduiScreen extends StatefulWidget {
     this.repository,
     this.renderer,
     this.observer,
+    this.viewPolicy,
     this.loadingBuilder,
     this.errorBuilder,
   });
@@ -23,6 +27,7 @@ class SduiScreen extends StatefulWidget {
   final ScreenRepository? repository;
   final SduiRenderer? renderer;
   final SduiObserver? observer;
+  final SduiViewPolicy? viewPolicy;
   final WidgetBuilder? loadingBuilder;
   final Widget Function(BuildContext context, Object error, VoidCallback retry)?
   errorBuilder;
@@ -35,7 +40,10 @@ class SduiScreen extends StatefulWidget {
 typedef DynamicScreen = SduiScreen;
 
 class _SduiScreenState extends State<SduiScreen> {
-  late Future<ScreenDocument> _future;
+  ScreenDocument? _document;
+  Object? _error;
+  bool _loading = true;
+  StreamSubscription<ScreenDocument>? _watchSub;
 
   ScreenRepository get _repository =>
       widget.repository ?? Sdui.client.repository;
@@ -52,10 +60,21 @@ class _SduiScreenState extends State<SduiScreen> {
     return const NoOpSduiObserver();
   }
 
+  SduiViewPolicy get _policy {
+    if (widget.viewPolicy != null) {
+      return widget.viewPolicy!;
+    }
+    if (Sdui.isInitialized) {
+      return Sdui.client.viewPolicy;
+    }
+    return SduiViewPolicy.material;
+  }
+
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _subscribe();
+    unawaited(_load(notify: false));
   }
 
   @override
@@ -63,35 +82,83 @@ class _SduiScreenState extends State<SduiScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.name != widget.name ||
         oldWidget.repository != widget.repository) {
-      _future = _load();
+      _document = null;
+      _error = null;
+      _subscribe();
+      unawaited(_load());
     }
   }
 
-  Future<ScreenDocument> _load() async {
-    final watch = Stopwatch()..start();
+  @override
+  void dispose() {
+    _watchSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribe() {
+    _watchSub?.cancel();
+    final repository = _repository;
+    if (repository is ScreenChangeSource) {
+      _watchSub = repository.watch(widget.name).listen((document) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _document = document;
+          _error = null;
+          _loading = false;
+        });
+      });
+      return;
+    }
+    _watchSub = null;
+  }
+
+  Future<void> _load({bool notify = true}) async {
+    _loading = true;
+    _error = null;
+    if (notify && mounted) {
+      setState(() {});
+    }
+    final stopwatch = Stopwatch()..start();
     try {
       final document = await _repository.load(widget.name);
       _observer.onScreenLoad(
         widget.name,
-        watch.elapsed,
+        stopwatch.elapsed,
         schemaVersion: document.schemaVersion,
       );
-      return document;
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _document = document;
+        _loading = false;
+      });
     } catch (error) {
       _observer.onScreenError(widget.name, error);
-      rethrow;
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
     }
   }
 
   void _retry() {
-    setState(() {
-      _future = _load();
-    });
+    unawaited(_load());
   }
 
   Widget _errorView(BuildContext context, Object error) {
     return widget.errorBuilder?.call(context, error, _retry) ??
-        _DefaultError(error: error, onRetry: _retry);
+        _policy.buildError(context, error, _retry);
+  }
+
+  Widget _loadingView(BuildContext context) {
+    return widget.loadingBuilder?.call(context) ??
+        _policy.buildLoading(context);
   }
 
   Widget _renderDocument(BuildContext context, ScreenDocument document) {
@@ -114,56 +181,21 @@ class _SduiScreenState extends State<SduiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ScreenDocument>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return widget.loadingBuilder?.call(context) ??
-              const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasError) {
-          return _errorView(context, snapshot.error!);
-        }
-        final document = snapshot.data;
-        if (document == null) {
-          final error = SduiLoadFailedException(
-            'Empty screen JSON for ${widget.name}',
-            screen: widget.name,
-          );
-          return _errorView(context, error);
-        }
-        return _renderDocument(context, document);
-      },
-    );
-  }
-}
-
-class _DefaultError extends StatelessWidget {
-  const _DefaultError({required this.error, required this.onRetry});
-
-  final Object error;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                'Could not load this screen.\n$error',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
-            ],
-          ),
-        ),
+    final document = _document;
+    if (document != null) {
+      return _renderDocument(context, document);
+    }
+    if (_loading) {
+      return _loadingView(context);
+    }
+    if (_error != null) {
+      return _errorView(context, _error!);
+    }
+    return _errorView(
+      context,
+      SduiLoadFailedException(
+        'Empty screen JSON for ${widget.name}',
+        screen: widget.name,
       ),
     );
   }

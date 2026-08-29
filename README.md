@@ -22,11 +22,16 @@ await Sdui.initialize(
     source: SduiScreenSource.asset, // or SduiScreenSource.network
     baseUrl: 'http://127.0.0.1:8000',
     tokenStore: tokenStore,
-    onUnauthorized: auth.logout,
-    onLogout: auth.logout,
+    onUnauthorized: auth.clearSession, // local only — do not POST /auth/logout
+    onLogout: auth.logout, // must call POST /auth/logout, then clear the token
     onNavigateScreen: (context, screen, {style = 'push'}) {
       // Host routes to SduiRoutes.screen(screen)
     },
+    viewPolicy: const SduiViewPolicy(
+      loadingLabel: 'Cargando',
+      errorMessage: 'No se pudo cargar esta pantalla.',
+      retryLabel: 'Reintentar',
+    ),
   ),
   extraWidgetParsers: const [], // optional StacParser list
 );
@@ -47,6 +52,19 @@ The loader accepts both shapes:
 
 The HTTP API wraps the Core widget tree in the envelope. `SduiScreen` isolates `Stac.fromJson` and shows a retry fallback when render fails.
 
+## Cache (SWR + ETag)
+
+The default asset/network repository is wrapped with [CachedScreenRepository] (`SduiConfig.cacheScreens`, default `true`). Injected `screenRepository` is left as-is so hosts can compose their own decorator.
+
+- **SWR**: a cache hit is returned immediately; a background fetch updates [ScreenChangeSource.watch] when the document changes.
+- **ETag**: [NetworkScreenRepository] sends `If-None-Match` and treats HTTP 304 as “keep cache”.
+- **Store**: in-memory [MemoryScreenCache] by default. Pass `screenCache` to persist (disk is a host [ScreenCache]).
+- Disable with `cacheScreens: false`, or skip revalidation for a while with `CachedScreenRepository.staleAfter`.
+
+## Logout
+
+`sduiLogout` only invokes `SduiConfig.onLogout`. The library does not call the API. The host callback **must** `POST /auth/logout` (or equivalent) and then clear [TokenStore]. Use a different callback for `onUnauthorized` (401): revoke-on-401 can loop if the revoke call itself returns 401.
+
 ## SduiScreen
 
 ```dart
@@ -54,7 +72,7 @@ SduiScreen(name: 'home')
 // DynamicScreen(name: 'home') is a typedef alias
 ```
 
-Pass `repository` and `renderer` to test or override the facade.
+Pass `repository` and `renderer` to test or override the facade. Loading/error UI, copies, and semantics come from [SduiViewPolicy] (`SduiConfig.viewPolicy` or the widget). `loadingBuilder` / `errorBuilder` still override per screen.
 
 ## TokenStore
 

@@ -6,11 +6,14 @@ import 'actions/sdui_navigate_action.dart';
 import 'auth/auth_interceptor.dart';
 import 'config.dart';
 import 'data/asset_screen_repository.dart';
+import 'data/cached_screen_repository.dart';
 import 'data/network_screen_repository.dart';
+import 'data/screen_cache.dart';
 import 'domain/screen_document.dart';
 import 'ports/screen_repository.dart';
 import 'ports/sdui_observer.dart';
 import 'ports/sdui_renderer.dart';
+import 'presentation/sdui_view_policy.dart';
 import 'rendering/stac_renderer.dart';
 
 /// Injectable SDUI runtime (repository + renderer + observer).
@@ -21,13 +24,16 @@ class SduiClient {
     required this.repository,
     required this.renderer,
     SduiObserver? observer,
-  }) : observer = observer ?? const NoOpSduiObserver();
+    SduiViewPolicy? viewPolicy,
+  }) : observer = observer ?? const NoOpSduiObserver(),
+       viewPolicy = viewPolicy ?? config.viewPolicy ?? SduiViewPolicy.material;
 
   final SduiConfig config;
   final Dio dio;
   final ScreenRepository repository;
   final SduiRenderer renderer;
   final SduiObserver observer;
+  final SduiViewPolicy viewPolicy;
 
   /// Builds Dio, loaders, action parsers, and (unless [renderer] is set) Stac.
   static Future<SduiClient> bootstrap({
@@ -75,6 +81,7 @@ class SduiClient {
       repository: repository,
       renderer: resolvedRenderer,
       observer: resolvedObserver,
+      viewPolicy: config.viewPolicy,
     );
   }
 
@@ -108,12 +115,19 @@ class SduiClient {
   }
 
   static ScreenRepository _defaultRepository(SduiConfig config, Dio client) {
-    return switch (config.source) {
+    final inner = switch (config.source) {
       SduiScreenSource.asset => AssetScreenRepository(config),
       SduiScreenSource.network => NetworkScreenRepository(
         config: config,
         dio: client,
       ),
     };
+    if (!config.cacheScreens) {
+      return inner;
+    }
+    return CachedScreenRepository(
+      inner: inner,
+      cache: config.screenCache ?? MemoryScreenCache(),
+    );
   }
 }

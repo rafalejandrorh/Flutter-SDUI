@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 
 import 'auth/token_store.dart';
+import 'data/screen_cache.dart';
 import 'ports/screen_repository.dart';
 import 'ports/sdui_observer.dart';
+import 'presentation/sdui_view_policy.dart';
 
 /// Where [SduiScreen] loads Stac JSON from when no repository is injected.
 enum SduiScreenSource {
@@ -32,6 +34,9 @@ class SduiConfig {
     this.dio,
     this.screenRepository,
     this.observer,
+    this.viewPolicy,
+    this.cacheScreens = true,
+    this.screenCache,
   });
 
   /// Asset fixtures or the real API. Ignored when [screenRepository] is set.
@@ -52,6 +57,11 @@ class SduiConfig {
   final VoidCallback? onUnauthorized;
 
   /// Called from the Stac `sduiLogout` action.
+  ///
+  /// The host must revoke the server session (e.g. `POST /auth/logout`) and
+  /// then clear [tokenStore]. Clearing the token locally is not enough.
+  /// Do not use this same callback for [onUnauthorized]: a 401 should only
+  /// drop the local session, or a failed revoke call can loop.
   final VoidCallback? onLogout;
 
   /// Called from the Stac `sduiNavigate` action.
@@ -65,6 +75,16 @@ class SduiConfig {
 
   /// Optional analytics/diagnostics hook.
   final SduiObserver? observer;
+
+  /// Loading/error UI, copies, and semantics. Defaults to Material English.
+  final SduiViewPolicy? viewPolicy;
+
+  /// When true (default), wrap the *default* asset/network repository with
+  /// [CachedScreenRepository]. Injected [screenRepository] is not wrapped.
+  final bool cacheScreens;
+
+  /// Persistence used by the cache decorator. Defaults to [MemoryScreenCache].
+  final ScreenCache? screenCache;
 
   String resolveAssetPath(String name) => assetPath.replaceAll('{name}', name);
 

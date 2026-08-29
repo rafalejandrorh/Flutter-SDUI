@@ -5,6 +5,7 @@ import 'config.dart';
 import 'ports/screen_repository.dart';
 import 'ports/sdui_observer.dart';
 import 'ports/sdui_renderer.dart';
+import 'presentation/sdui_view_policy.dart';
 import 'sdui_client.dart';
 
 /// Static facade over [SduiClient] for `Sdui.initialize` hosts.
@@ -30,6 +31,8 @@ class Sdui {
   static SduiRenderer get renderer => client.renderer;
 
   static SduiObserver get observer => client.observer;
+
+  static SduiViewPolicy get viewPolicy => client.viewPolicy;
 
   static bool get isInitialized => _client != null;
 
