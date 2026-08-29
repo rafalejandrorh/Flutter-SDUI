@@ -46,4 +46,4 @@ Implement `TokenStore` (`read` / `write` / `clear`) for the bearer token. Use `M
 - **asset** — bundled fixtures, default `assets/screens/{name}.json`
 - **network** — HTTP GET `{baseUrl}/sdui/screens/{name}`
 
-Switch the host app to the API with dart-defines SDUI_USE_NETWORK=true and SDUI_API_BASE_URL (default http://127.0.0.1:8000).
+Switch the host app to the API with dart-defines `SDUI_USE_NETWORK=true` and `SDUI_API_BASE_URL` (default `http://127.0.0.1:8000`). Dio uses that origin as `baseUrl` so Stac `networkRequest` actions can call relative paths such as `/sdui/actions/profile`.

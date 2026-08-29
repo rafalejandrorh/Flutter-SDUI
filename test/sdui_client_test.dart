@@ -37,4 +37,21 @@ void main() {
       expect(await store.read(), isNull);
     });
   });
+
+  group('Sdui.initialize', () {
+    tearDown(Sdui.reset);
+
+    test('applies baseUrl and Accept header on Dio', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      await Sdui.initialize(
+        config: const SduiConfig(
+          source: SduiScreenSource.network,
+          baseUrl: 'http://127.0.0.1:8000',
+        ),
+      );
+
+      expect(Sdui.dio.options.baseUrl, 'http://127.0.0.1:8000');
+      expect(Sdui.dio.options.headers['Accept'], 'application/json');
+    });
+  });
 }

@@ -46,7 +46,17 @@ class Sdui {
     List<StacActionParser> extraActionParsers = const [],
   }) async {
     _config = config;
-    final client = config.dio ?? Dio();
+    final client = config.dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: config.baseUrl,
+            headers: const {'Accept': 'application/json'},
+          ),
+        );
+    if (config.baseUrl.isNotEmpty) {
+      client.options.baseUrl = config.baseUrl;
+    }
+    client.options.headers.putIfAbsent('Accept', () => 'application/json');
     final tokenStore = config.tokenStore;
     if (tokenStore != null) {
       client.interceptors.add(
