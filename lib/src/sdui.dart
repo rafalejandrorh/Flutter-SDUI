@@ -1,94 +1,56 @@
 import 'package:dio/dio.dart';
-import 'package:stac/stac.dart';
+import 'package:stac_framework/stac_framework.dart';
 
-import 'actions/sdui_logout_action.dart';
-import 'actions/sdui_navigate_action.dart';
-import 'auth/auth_interceptor.dart';
 import 'config.dart';
-import 'screen_loader.dart';
+import 'ports/screen_repository.dart';
+import 'ports/sdui_observer.dart';
+import 'ports/sdui_renderer.dart';
+import 'sdui_client.dart';
 
-/// Runtime entry point for the SDUI client.
+/// Static facade over [SduiClient] for `Sdui.initialize` hosts.
 class Sdui {
   Sdui._();
 
-  static SduiConfig? _config;
-  static Dio? _dio;
-  static ScreenLoader? _loader;
+  static SduiClient? _client;
 
-  static SduiConfig get config {
-    final value = _config;
+  static SduiClient get client {
+    final value = _client;
     if (value == null) {
       throw StateError('Call Sdui.initialize before using the SDUI client.');
     }
     return value;
   }
 
-  static Dio get dio {
-    final value = _dio;
-    if (value == null) {
-      throw StateError('Call Sdui.initialize before using the SDUI client.');
-    }
-    return value;
-  }
+  static SduiConfig get config => client.config;
 
-  static ScreenLoader get loader {
-    final value = _loader;
-    if (value == null) {
-      throw StateError('Call Sdui.initialize before using the SDUI client.');
-    }
-    return value;
-  }
+  static Dio get dio => client.dio;
 
-  static bool get isInitialized => _config != null;
+  static ScreenRepository get repository => client.repository;
+
+  static SduiRenderer get renderer => client.renderer;
+
+  static SduiObserver get observer => client.observer;
+
+  static bool get isInitialized => _client != null;
 
   static Future<void> initialize({
     required SduiConfig config,
-    List<StacActionParser> extraActionParsers = const [],
+    List<StacActionParser<dynamic>> extraActionParsers = const [],
+    List<StacParser<dynamic>> extraWidgetParsers = const [],
+    SduiRenderer? renderer,
+    SduiObserver? observer,
   }) async {
-    _config = config;
-    final client = config.dio ??
-        Dio(
-          BaseOptions(
-            baseUrl: config.baseUrl,
-            headers: const {'Accept': 'application/json'},
-          ),
-        );
-    if (config.baseUrl.isNotEmpty) {
-      client.options.baseUrl = config.baseUrl;
-    }
-    client.options.headers.putIfAbsent('Accept', () => 'application/json');
-    final tokenStore = config.tokenStore;
-    if (tokenStore != null) {
-      client.interceptors.add(
-        SduiAuthInterceptor(
-          tokenStore: tokenStore,
-          onUnauthorized: config.onUnauthorized,
-        ),
-      );
-    }
-    _dio = client;
-    _loader = switch (config.source) {
-      SduiScreenSource.asset => AssetScreenLoader(config),
-      SduiScreenSource.network => NetworkScreenLoader(
-          config: config,
-          dio: client,
-        ),
-    };
-
-    await Stac.initialize(
-      dio: client,
-      actionParsers: [
-        const SduiNavigateActionParser(),
-        const SduiLogoutActionParser(),
-        ...extraActionParsers,
-      ],
+    _client = await SduiClient.bootstrap(
+      config: config,
+      extraActionParsers: extraActionParsers,
+      extraWidgetParsers: extraWidgetParsers,
+      renderer: renderer,
+      observer: observer,
     );
   }
 
   /// Test-only reset.
   static void reset() {
-    _config = null;
-    _dio = null;
-    _loader = null;
+    _client = null;
   }
 }

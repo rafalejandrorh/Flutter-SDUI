@@ -28,14 +28,33 @@ await Sdui.initialize(
       // Host routes to SduiRoutes.screen(screen)
     },
   ),
+  extraWidgetParsers: const [], // optional StacParser list
 );
 ```
 
-## DynamicScreen
+Inject a custom [ScreenRepository] via `SduiConfig.screenRepository` to skip the asset/network switch.
+
+Pass an [SduiObserver] to `initialize` (or `SduiConfig.observer`) to receive load latency, errors, actions, and render failures.
+
+Dio sends `X-SDUI-Client-Version` so the API can negotiate the contract later.
+
+## Screen contract
+
+The loader accepts both shapes:
+
+1. **Raw Stac** — a widget tree with `type` (legacy / asset fixtures). Treated as `schemaVersion` 0.
+2. **Envelope** — `{ "schemaVersion": 1, "name": "home", "body": { "type": "scaffold", ... } }`. Future versions fail with [SduiUnsupportedVersionException] instead of a Stac crash.
+
+The HTTP API wraps the Core widget tree in the envelope. `SduiScreen` isolates `Stac.fromJson` and shows a retry fallback when render fails.
+
+## SduiScreen
 
 ```dart
-DynamicScreen(name: 'home')
+SduiScreen(name: 'home')
+// DynamicScreen(name: 'home') is a typedef alias
 ```
+
+Pass `repository` and `renderer` to test or override the facade.
 
 ## TokenStore
 
@@ -47,3 +66,7 @@ Implement `TokenStore` (`read` / `write` / `clear`) for the bearer token. Use `M
 - **network** — HTTP GET `{baseUrl}/sdui/screens/{name}`
 
 Switch the host app to the API with dart-defines `SDUI_USE_NETWORK=true` and `SDUI_API_BASE_URL` (default `http://127.0.0.1:8000`). Dio uses that origin as `baseUrl` so Stac `networkRequest` actions can call relative paths such as `/sdui/actions/profile`.
+
+## Routes
+
+`SduiRoutes.screen('home')` → `/sdui/home`. Login and register paths belong to the host app.

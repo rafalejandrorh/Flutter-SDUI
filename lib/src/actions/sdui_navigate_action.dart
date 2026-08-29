@@ -1,15 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:stac/stac.dart';
+import 'package:stac_framework/stac_framework.dart';
 
-import '../sdui.dart';
+import '../config.dart';
+import '../ports/sdui_observer.dart';
 
 class SduiNavigateAction {
-  const SduiNavigateAction({
-    required this.screen,
-    this.style = 'push',
-  });
+  const SduiNavigateAction({required this.screen, this.style = 'push'});
 
   final String screen;
   final String style;
@@ -22,8 +20,12 @@ class SduiNavigateAction {
   }
 }
 
+/// Stac `sduiNavigate` → host [SduiNavigateCallback].
 class SduiNavigateActionParser implements StacActionParser<SduiNavigateAction> {
-  const SduiNavigateActionParser();
+  SduiNavigateActionParser({required this.onNavigate, this.observer});
+
+  final SduiNavigateCallback onNavigate;
+  final SduiObserver? observer;
 
   @override
   String get actionType => 'sduiNavigate';
@@ -33,16 +35,8 @@ class SduiNavigateActionParser implements StacActionParser<SduiNavigateAction> {
       SduiNavigateAction.fromJson(json);
 
   @override
-  FutureOr<dynamic> onCall(
-    BuildContext context,
-    SduiNavigateAction model,
-  ) {
-    final callback = Sdui.config.onNavigateScreen;
-    if (callback == null) {
-      throw StateError(
-        'SduiConfig.onNavigateScreen is required for sduiNavigate actions.',
-      );
-    }
-    callback(context, model.screen, style: model.style);
+  FutureOr<dynamic> onCall(BuildContext context, SduiNavigateAction model) {
+    observer?.onAction('sduiNavigate', screen: model.screen);
+    onNavigate(context, model.screen, style: model.style);
   }
 }

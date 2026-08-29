@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 
 import 'auth/token_store.dart';
+import 'ports/screen_repository.dart';
+import 'ports/sdui_observer.dart';
 
-/// Where [DynamicScreen] loads Stac JSON from.
+/// Where [SduiScreen] loads Stac JSON from when no repository is injected.
 enum SduiScreenSource {
   /// Bundled JSON, e.g. `assets/screens/{name}.json`.
   asset,
@@ -13,13 +15,10 @@ enum SduiScreenSource {
 }
 
 /// Host-provided navigation from a Stac `sduiNavigate` action.
-typedef SduiNavigateCallback = void Function(
-  BuildContext context,
-  String screen, {
-  String style,
-});
+typedef SduiNavigateCallback =
+    void Function(BuildContext context, String screen, {String style});
 
-/// Configuration for [Sdui.initialize].
+/// Configuration for [Sdui.initialize] / [SduiClient.bootstrap].
 class SduiConfig {
   const SduiConfig({
     required this.source,
@@ -31,9 +30,11 @@ class SduiConfig {
     this.onLogout,
     this.onNavigateScreen,
     this.dio,
+    this.screenRepository,
+    this.observer,
   });
 
-  /// Asset fixtures (Phase 1) or the real API (Phase 2).
+  /// Asset fixtures or the real API. Ignored when [screenRepository] is set.
   final SduiScreenSource source;
 
   /// API origin without trailing slash, e.g. `https://api.example.com`.
@@ -56,8 +57,14 @@ class SduiConfig {
   /// Called from the Stac `sduiNavigate` action.
   final SduiNavigateCallback? onNavigateScreen;
 
-  /// Optional shared client. If omitted, [Sdui] creates one.
+  /// Optional shared client. If omitted, [SduiClient] creates one.
   final Dio? dio;
+
+  /// When set, skips the asset/network switch (OCP).
+  final ScreenRepository? screenRepository;
+
+  /// Optional analytics/diagnostics hook.
+  final SduiObserver? observer;
 
   String resolveAssetPath(String name) => assetPath.replaceAll('{name}', name);
 

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:stac/stac.dart';
+import 'package:stac_framework/stac_framework.dart';
 
-import '../sdui.dart';
+import '../ports/sdui_observer.dart';
 
 class SduiLogoutAction {
   const SduiLogoutAction();
@@ -13,8 +13,12 @@ class SduiLogoutAction {
   }
 }
 
+/// Stac `sduiLogout` → host logout callback.
 class SduiLogoutActionParser implements StacActionParser<SduiLogoutAction> {
-  const SduiLogoutActionParser();
+  SduiLogoutActionParser({this.onLogout, this.observer});
+
+  final VoidCallback? onLogout;
+  final SduiObserver? observer;
 
   @override
   String get actionType => 'sduiLogout';
@@ -25,6 +29,7 @@ class SduiLogoutActionParser implements StacActionParser<SduiLogoutAction> {
 
   @override
   FutureOr<dynamic> onCall(BuildContext context, SduiLogoutAction model) {
-    Sdui.config.onLogout?.call();
+    observer?.onAction('sduiLogout');
+    onLogout?.call();
   }
 }
