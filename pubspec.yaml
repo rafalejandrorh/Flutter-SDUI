@@ -1,0 +1,22 @@
+name: sdui_client
+description: "Reusable Stac SDUI client for Flutter apps"
+version: 0.0.1
+homepage:
+
+environment:
+  sdk: ^3.11.5
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.8.0
+  stac: ^1.5.0
+  stac_framework: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
