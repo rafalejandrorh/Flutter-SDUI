@@ -23,6 +23,7 @@ import 'presentation/sdui_view_policy.dart';
 import 'rendering/stac_renderer.dart';
 import 'widgets/bar_chart.dart';
 import 'widgets/bound_text.dart';
+import 'widgets/decimal_text_form_field.dart';
 import 'widgets/form_dropdown.dart';
 
 /// Injectable SDUI runtime (repository + renderer + observer).
@@ -115,6 +116,7 @@ class SduiClient {
           ...extraWidgetParsers,
           const BarChartParser(),
           const BoundTextParser(),
+          const DecimalTextFormFieldParser(),
           const FormDropdownMenuParser(),
         ],
         actionParsers: [

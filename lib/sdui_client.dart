@@ -29,6 +29,7 @@ export 'src/actions/sdui_set_value_action.dart';
 export 'src/widgets/bar_chart.dart';
 export 'src/widgets/bound_text.dart';
 export 'src/widgets/bound_value_store.dart';
+export 'src/widgets/decimal_text_form_field.dart';
 export 'src/widgets/form_dropdown.dart';
 export 'src/sdui.dart';
 export 'src/sdui_client.dart';
