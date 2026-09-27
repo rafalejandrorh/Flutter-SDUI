@@ -44,6 +44,7 @@ class _SduiScreenState extends State<SduiScreen> {
   Object? _error;
   bool _loading = true;
   StreamSubscription<ScreenDocument>? _watchSub;
+  StreamSubscription<ScreenDocument>? _reloadSub;
 
   ScreenRepository get _repository =>
       widget.repository ?? Sdui.client.repository;
@@ -74,6 +75,7 @@ class _SduiScreenState extends State<SduiScreen> {
   void initState() {
     super.initState();
     _subscribe();
+    _bindReload();
     unawaited(_load(notify: false));
   }
 
@@ -82,9 +84,13 @@ class _SduiScreenState extends State<SduiScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.name != widget.name ||
         oldWidget.repository != widget.repository) {
+      if (oldWidget.repository == null && Sdui.isInitialized) {
+        Sdui.client.unfocusScreen(oldWidget.name);
+      }
       _document = null;
       _error = null;
       _subscribe();
+      _bindReload();
       unawaited(_load());
     }
   }
@@ -92,7 +98,37 @@ class _SduiScreenState extends State<SduiScreen> {
   @override
   void dispose() {
     _cancelWatch();
+    _cancelReload();
+    if (widget.repository == null && Sdui.isInitialized) {
+      Sdui.client.unfocusScreen(widget.name);
+    }
     super.dispose();
+  }
+
+  void _bindReload() {
+    _cancelReload();
+    if (widget.repository != null || !Sdui.isInitialized) {
+      return;
+    }
+    Sdui.client.focusScreen(widget.name);
+    _reloadSub = Sdui.client.reloads.listen((document) {
+      if (!mounted || document.name != widget.name) {
+        return;
+      }
+      setState(() {
+        _document = document;
+        _error = null;
+        _loading = false;
+      });
+    });
+  }
+
+  void _cancelReload() {
+    final sub = _reloadSub;
+    if (sub != null) {
+      unawaited(sub.cancel());
+    }
+    _reloadSub = null;
   }
 
   void _subscribe() {

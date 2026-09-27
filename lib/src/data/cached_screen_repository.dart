@@ -71,6 +71,20 @@ class CachedScreenRepository implements ScreenChangeSource {
     });
   }
 
+  /// Skips the cache hit, fetches [name], and replaces the stored copy.
+  @override
+  Future<ScreenDocument> loadFresh(String name) async {
+    final document = await _doFetchAndStore(name);
+    if (document == null) {
+      throw SduiLoadFailedException(
+        'Screen "$name" refresh did not return a document.',
+        screen: name,
+      );
+    }
+    _emit(name, document);
+    return document;
+  }
+
   Future<void> _revalidate(String name, ScreenCacheEntry cached) async {
     try {
       final fresh = await _doFetchAndStore(

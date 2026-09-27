@@ -45,9 +45,13 @@ flowchart TB
 3. Si hay `tokenStore`, se añade `SduiAuthInterceptor` (`Authorization: Bearer` y `onUnauthorized` en HTTP 401).
 4. Repositorio: `config.screenRepository` o el default según `source` (`AssetScreenRepository` / `NetworkScreenRepository`). Si `cacheScreens` (default `true`), se envuelve en `CachedScreenRepository`. Un repositorio inyectado **no** se envuelve.
 5. Renderer: argumento o `StacRenderer`.
-6. Si no hay renderer custom, `StacRenderer.bootstrap` registra Dio, `sduiNavigate`, `sduiLogout` y los parsers extra del host (`override: true`).
+6. Si no hay renderer custom, `StacRenderer.bootstrap` registra Dio, `sduiNavigate`, `sduiLogout`, los parsers extra del host y, después, `sduiShare`, `sduiReload` y `barChart` (`override: true`).
+
+Stac aplica `override: true`: el último parser de un mismo `type` o `actionType` reemplaza al anterior. `sduiShare`, `barChart` y `sduiReload` van al final para que un parser extra del host no los tape. `sduiNavigate` y `sduiLogout` siguen delante de los extra.
 
 Sin `onNavigateScreen`, el parser de `sduiNavigate` lanza `StateError` al ejecutarse.
+
+`sduiReload` llama a `ScreenRepository.loadFresh`. El decorator de cache no devuelve el hit: pide la pantalla, sustituye la entrada y avisa a `watch`. Si el GET falla, `SduiScreen` conserva el body que ya tenía y el observer recibe `onScreenError`. El future de la acción termina igual, con un `Response` vacío, para que el `RefreshIndicator` de Stac no se quede girando ni reemplace el hijo.
 
 ## Contrato de pantalla
 
@@ -98,6 +102,8 @@ Errores de revalidación SWR se tragan: el contenido stale sigue en pantalla.
 | HTTP 401 | `onUnauthorized` | Solo limpiar sesión local (no `POST` de revoke) |
 | `sduiLogout` | `onLogout` | `POST /auth/logout` (o equivalente) **y luego** `tokenStore.clear` |
 | `sduiNavigate` | `onNavigateScreen` | Navegar a `SduiRoutes.screen(name)` (`/sdui/{name}`) |
+| `sduiShare` | — | Abre la hoja del sistema con el `text` del JSON |
+| `sduiReload` | — | `loadFresh` de la pantalla nombrada, o de la que está en foco |
 
 La librería no escribe tokens ni llama APIs de logout. El mismo Dio se comparte con Stac para que `networkRequest` relativos (`/sdui/actions/profile`) lleven auth.
 
@@ -139,6 +145,9 @@ Tipos exportados por `package:sdui_client/sdui_client.dart`:
 | `TokenStore` / `MemoryTokenStore` | `auth/token_store.dart` | Bearer del host |
 | `SduiNavigateActionParser` | `actions/sdui_navigate_action.dart` | `actionType: sduiNavigate` |
 | `SduiLogoutActionParser` | `actions/sdui_logout_action.dart` | `actionType: sduiLogout` |
+| `SduiShareActionParser` | `actions/sdui_share_action.dart` | `actionType: sduiShare` |
+| `SduiReloadActionParser` | `actions/sdui_reload_action.dart` | `actionType: sduiReload` |
+| `BarChartParser` / `BarChartView` | `widgets/bar_chart.dart` | `type: barChart` |
 | `SduiRoutes` | `routing/sdui_routes.dart` | `/sdui/{name}` |
 
 No exportados (detalle de implementación): `StacRenderer`, `SduiAuthInterceptor`, `asJsonObject`.

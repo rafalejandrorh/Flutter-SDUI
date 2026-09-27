@@ -6,6 +6,8 @@ export 'package:stac_framework/stac_framework.dart'
 
 export 'src/actions/sdui_logout_action.dart';
 export 'src/actions/sdui_navigate_action.dart';
+export 'src/actions/sdui_reload_action.dart';
+export 'src/actions/sdui_share_action.dart';
 export 'src/auth/token_store.dart';
 export 'src/config.dart';
 export 'src/data/asset_screen_repository.dart';
@@ -21,5 +23,6 @@ export 'src/ports/sdui_renderer.dart';
 export 'src/presentation/sdui_screen.dart';
 export 'src/presentation/sdui_view_policy.dart';
 export 'src/routing/sdui_routes.dart';
+export 'src/widgets/bar_chart.dart';
 export 'src/sdui.dart';
 export 'src/sdui_client.dart';

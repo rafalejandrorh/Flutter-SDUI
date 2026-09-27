@@ -61,6 +61,12 @@ Implementar `ScreenCache` (`read` / `write` / `remove` / `clear`) y pasarlo en `
 
 Extender `SduiObserver` y pasarlo a `initialize` o `SduiConfig.observer`. Eventos: `onScreenLoad`, `onScreenError`, `onAction`, `onRenderFailed`. `onUnknownWidget` está en el puerto y hoy no lo emite la librería.
 
-Parsers o widgets Stac extra: `extraActionParsers` / `extraWidgetParsers` en `initialize`.
+## Parsers de la librería y parsers extra
+
+`sduiShare`, `barChart` y `sduiReload` se registran en `SduiClient.bootstrap`. Cualquier host que llame a `Sdui.initialize` los tiene, sin pasarlos en `extraActionParsers` / `extraWidgetParsers`.
+
+Esos dos parámetros siguen siendo para widgets y acciones del host. Stac registra la lista con `override: true`: el último parser de un mismo `type` o `actionType` gana. Por eso los tres de la librería se registran después de los del host. Un extra con el mismo nombre no los tapa.
+
+`sduiNavigate` y `sduiLogout` se registran antes de los extra.
 
 Inventario de tipos en [arquitectura](arquitectura.md). Ejemplos de cableado en [uso](uso.md).

@@ -34,4 +34,7 @@ class MemoryScreenRepository implements ScreenRepository {
     }
     return ScreenDocument.parse(Map<String, dynamic>.from(json), name: name);
   }
+
+  @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 }

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:stac_framework/stac_framework.dart';
 
 import 'actions/sdui_logout_action.dart';
 import 'actions/sdui_navigate_action.dart';
+import 'actions/sdui_reload_action.dart';
+import 'actions/sdui_share_action.dart';
 import 'auth/auth_interceptor.dart';
 import 'config.dart';
 import 'data/asset_screen_repository.dart';
@@ -15,6 +19,7 @@ import 'ports/sdui_observer.dart';
 import 'ports/sdui_renderer.dart';
 import 'presentation/sdui_view_policy.dart';
 import 'rendering/stac_renderer.dart';
+import 'widgets/bar_chart.dart';
 
 /// Injectable SDUI runtime (repository + renderer + observer).
 class SduiClient {
@@ -35,6 +40,46 @@ class SduiClient {
   final SduiObserver observer;
   final SduiViewPolicy viewPolicy;
 
+  final StreamController<ScreenDocument> _reloads =
+      StreamController<ScreenDocument>.broadcast();
+
+  String? _focusedScreen;
+
+  /// Documents produced by [reload]. [SduiScreen] listens when it uses this client.
+  Stream<ScreenDocument> get reloads => _reloads.stream;
+
+  /// Screen reloaded when an `sduiReload` action omits `screen`.
+  void focusScreen(String name) {
+    _focusedScreen = name;
+  }
+
+  void unfocusScreen(String name) {
+    if (_focusedScreen == name) {
+      _focusedScreen = null;
+    }
+  }
+
+  /// Fetches [screen], or the focused screen, skipping a cache hit.
+  ///
+  /// A failed fetch keeps the previous document and reports [SduiObserver.onScreenError].
+  Future<void> reload({String? screen}) async {
+    final requested = screen;
+    final name = (requested == null || requested.isEmpty)
+        ? _focusedScreen
+        : requested;
+    if (name == null || name.isEmpty) {
+      return;
+    }
+    try {
+      final document = await repository.loadFresh(name);
+      if (!_reloads.isClosed) {
+        _reloads.add(document);
+      }
+    } catch (error) {
+      observer.onScreenError(name, error);
+    }
+  }
+
   /// Builds Dio, loaders, action parsers, and (unless [renderer] is set) Stac.
   static Future<SduiClient> bootstrap({
     required SduiConfig config,
@@ -49,12 +94,20 @@ class SduiClient {
     final repository =
         config.screenRepository ?? _defaultRepository(config, client);
     final resolvedRenderer = renderer ?? const StacRenderer();
+    final runtime = SduiClient(
+      config: config,
+      dio: client,
+      repository: repository,
+      renderer: resolvedRenderer,
+      observer: resolvedObserver,
+      viewPolicy: config.viewPolicy,
+    );
 
     if (renderer == null) {
       final onNavigate = config.onNavigateScreen;
       await StacRenderer.bootstrap(
         dio: client,
-        widgetParsers: extraWidgetParsers,
+        widgetParsers: [...extraWidgetParsers, const BarChartParser()],
         actionParsers: [
           SduiNavigateActionParser(
             onNavigate:
@@ -71,18 +124,16 @@ class SduiClient {
             observer: resolvedObserver,
           ),
           ...extraActionParsers,
+          SduiShareActionParser(observer: resolvedObserver),
+          SduiReloadActionParser(
+            onReload: runtime.reload,
+            observer: resolvedObserver,
+          ),
         ],
       );
     }
 
-    return SduiClient(
-      config: config,
-      dio: client,
-      repository: repository,
-      renderer: resolvedRenderer,
-      observer: resolvedObserver,
-      viewPolicy: config.viewPolicy,
-    );
+    return runtime;
   }
 
   static Dio _createDio(SduiConfig config) {

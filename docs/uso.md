@@ -150,6 +150,44 @@ viewPolicy: const SduiViewPolicy(
 
 O reemplazar por completo `loadingBuilder` / `errorBuilder` en la política o en un `SduiScreen` concreto.
 
+## Compartir, recargar y barras
+
+Estas tres piezas vienen registradas. El host no las pasa en `extraActionParsers` ni `extraWidgetParsers`.
+
+Pull-to-refresh de la pantalla actual:
+
+```json
+{
+  "type": "refreshIndicator",
+  "onRefresh": { "actionType": "sduiReload" },
+  "child": { "type": "text", "data": "Tasas" }
+}
+```
+
+`sduiReload` sin `screen` recarga la pantalla en foco. Con `"screen": "movements"` pide esa. El GET salta el hit de cache. Si falla, se queda lo que ya estaba pintado.
+
+Compartir un texto ya armado en el servidor:
+
+```json
+{
+  "type": "filledButton",
+  "child": { "type": "text", "data": "Compartir" },
+  "onPressed": { "actionType": "sduiShare", "text": "Hoy: $ 12,00" }
+}
+```
+
+Barras de la semana. `value` ya viene en dólares. Si `bars` está vacío, se pinta `emptyLabel` o, si no viene, «Sin movimientos».
+
+```json
+{
+  "type": "barChart",
+  "emptyLabel": "Sin movimientos",
+  "bars": [
+    { "label": "Comida", "value": 42.5, "color": "#1B6B4A" }
+  ]
+}
+```
+
 ## Observer y parsers extra
 
 ```dart

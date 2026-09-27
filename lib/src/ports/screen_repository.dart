@@ -3,6 +3,12 @@ import '../domain/screen_document.dart';
 /// Loads a named screen. Hosts can inject a custom implementation.
 abstract class ScreenRepository {
   Future<ScreenDocument> load(String name);
+
+  /// Loads [name] without serving a cache hit.
+  ///
+  /// The default calls [load]. The cache decorator overrides this to fetch,
+  /// replace the stored copy, and notify watchers.
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 }
 
 /// Optional SWR capability: emit a newer document after [ScreenRepository.load].

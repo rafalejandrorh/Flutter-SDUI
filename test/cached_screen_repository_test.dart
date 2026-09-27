@@ -41,6 +41,38 @@ void main() {
       expect((await repo.cache.read('home'))!.document.body['data'], 'v1');
     });
 
+    test('loadFresh skips a fresh cache entry and replaces it', () async {
+      final inner = _CountingRepo({
+        'home': {'type': 'text', 'data': 'v1'},
+      });
+      final repo = CachedScreenRepository(
+        inner: inner,
+        staleAfter: const Duration(hours: 1),
+      );
+
+      await repo.load('home');
+      inner.put('home', {'type': 'text', 'data': 'v2'});
+
+      final fresh = await repo.loadFresh('home');
+
+      expect(inner.loads, 2);
+      expect(fresh.body['data'], 'v2');
+      expect((await repo.cache.read('home'))!.document.body['data'], 'v2');
+    });
+
+    test('loadFresh leaves the previous cache when the fetch fails', () async {
+      final inner = _CountingRepo({
+        'home': {'type': 'text', 'data': 'v1'},
+      });
+      final repo = CachedScreenRepository(inner: inner);
+
+      await repo.load('home');
+      inner.errorForNextLoad = Exception('down');
+
+      expect(repo.loadFresh('home'), throwsA(isA<Exception>()));
+      expect((await repo.cache.read('home'))!.document.body['data'], 'v1');
+    });
+
     test('sends If-None-Match and keeps cache on 304', () async {
       final inner = _FakeConditional(
         json: {'type': 'text', 'data': 'v1'},
@@ -189,6 +221,9 @@ class _FakeConditional implements ConditionalScreenRepository {
   }
 
   @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
+
+  @override
   Future<ScreenFetch> fetch(String name, {String? ifNoneMatch}) async {
     fetches++;
     lastIfNoneMatch = ifNoneMatch;
@@ -213,6 +248,9 @@ class _NullDocumentConditional implements ConditionalScreenRepository {
   Future<ScreenDocument> load(String name) async {
     throw StateError('load() is not used; fetch is overridden.');
   }
+
+  @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 
   @override
   Future<ScreenFetch> fetch(String name, {String? ifNoneMatch}) async {

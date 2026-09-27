@@ -27,6 +27,8 @@ test/
 ├── cached_screen_repository_test.dart
 ├── sdui_client_test.dart
 ├── sdui_screen_test.dart
+├── builtin_parsers_test.dart
+├── bar_chart_test.dart
 ├── php_core_contract_test.dart
 ├── php_core_golden_test.dart
 ├── support/
@@ -38,7 +40,9 @@ test/
 │   └── form.json
 └── goldens/
     ├── php_core_home.png
-    └── php_core_details.png
+    ├── php_core_details.png
+    ├── bar_chart_bars.png
+    └── bar_chart_empty.png
 ```
 
 La mayoría de los tests de widget no arrancan Stac: inyectan `FakeRenderer`. Los goldens sí usan el renderer real.
@@ -59,7 +63,7 @@ GET 200 con ETag, `If-None-Match` + 304 → `notModified`, errores de transporte
 
 ### `cached_screen_repository_test.dart`
 
-Hit + revalidación SWR, `staleAfter` sin revalidar, 304 conserva cache, GET fresco actualiza cache y notifica `watch`.
+Hit + revalidación SWR, `staleAfter` sin revalidar, `loadFresh` salta ese hit y sustituye la entrada, 304 conserva cache, GET fresco actualiza cache y notifica `watch`.
 
 ### `sdui_client_test.dart`
 
@@ -68,6 +72,14 @@ Hit + revalidación SWR, `staleAfter` sin revalidar, 304 conserva cache, GET fre
 ### `sdui_screen_test.dart`
 
 Loading, `loadingBuilder` / `errorBuilder`, render inyectado, retry, observer en carga OK, copys y builders de `SduiViewPolicy`, update SWR vía `ScreenChangeSource`, fallback si el renderer lanza o devuelve `null`, reload al cambiar `name`, fallback a la fachada.
+
+### `builtin_parsers_test.dart`
+
+`Sdui.initialize` sin parsers extra resuelve `sduiShare` (la hoja se sustituye por un fake). Un extra con el mismo `actionType` no corre. `sduiReload` pide `loadFresh` una vez, pinta el documento nuevo y, si el GET falla, deja el anterior y avisa `onScreenError`.
+
+### `bar_chart_test.dart`
+
+`barChart` con dos barras y con lista vacía, a través de Stac. Goldens propios; los de `home` y `details` no se regeneran.
 
 ### `php_core_contract_test.dart`
 

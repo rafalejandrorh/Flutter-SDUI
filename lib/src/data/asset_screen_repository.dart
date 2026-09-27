@@ -30,4 +30,7 @@ class AssetScreenRepository implements ScreenRepository {
       );
     }
   }
+
+  @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 }

@@ -87,4 +87,7 @@ class PendingScreenRepository implements ScreenRepository {
 
   @override
   Future<ScreenDocument> load(String name) => completer.future;
+
+  @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 }

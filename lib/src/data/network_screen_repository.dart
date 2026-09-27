@@ -66,4 +66,7 @@ class NetworkScreenRepository implements ConditionalScreenRepository {
   static bool _isSuccessOrNotModified(int? status) {
     return status != null && ((status >= 200 && status < 300) || status == 304);
   }
+
+  @override
+  Future<ScreenDocument> loadFresh(String name) => load(name);
 }
