@@ -5,7 +5,9 @@ import 'package:stac_framework/stac_framework.dart';
 
 import 'actions/sdui_logout_action.dart';
 import 'actions/sdui_navigate_action.dart';
+import 'actions/sdui_network_request_action.dart';
 import 'actions/sdui_reload_action.dart';
+import 'actions/sdui_set_value_action.dart';
 import 'actions/sdui_share_action.dart';
 import 'auth/auth_interceptor.dart';
 import 'config.dart';
@@ -20,6 +22,8 @@ import 'ports/sdui_renderer.dart';
 import 'presentation/sdui_view_policy.dart';
 import 'rendering/stac_renderer.dart';
 import 'widgets/bar_chart.dart';
+import 'widgets/bound_text.dart';
+import 'widgets/form_dropdown.dart';
 
 /// Injectable SDUI runtime (repository + renderer + observer).
 class SduiClient {
@@ -107,7 +111,12 @@ class SduiClient {
       final onNavigate = config.onNavigateScreen;
       await StacRenderer.bootstrap(
         dio: client,
-        widgetParsers: [...extraWidgetParsers, const BarChartParser()],
+        widgetParsers: [
+          ...extraWidgetParsers,
+          const BarChartParser(),
+          const BoundTextParser(),
+          const FormDropdownMenuParser(),
+        ],
         actionParsers: [
           SduiNavigateActionParser(
             onNavigate:
@@ -129,6 +138,8 @@ class SduiClient {
             onReload: runtime.reload,
             observer: resolvedObserver,
           ),
+          const SduiNetworkRequestActionParser(),
+          const SduiSetValueActionParser(),
         ],
       );
     }

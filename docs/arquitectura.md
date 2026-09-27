@@ -148,6 +148,10 @@ Tipos exportados por `package:sdui_client/sdui_client.dart`:
 | `SduiShareActionParser` | `actions/sdui_share_action.dart` | `actionType: sduiShare` |
 | `SduiReloadActionParser` | `actions/sdui_reload_action.dart` | `actionType: sduiReload` |
 | `BarChartParser` / `BarChartView` | `widgets/bar_chart.dart` | `type: barChart` |
+| `BoundTextParser` / `BoundTextView` | `widgets/bound_text.dart` | `type: boundText` |
+| `FormDropdownMenuParser` | `widgets/form_dropdown.dart` | `dropdownMenu` con `id` en el formulario |
+| `SduiNetworkRequestActionParser` | `actions/sdui_network_request_action.dart` | `networkRequest` y `{{response.*}}` |
+| `SduiSetValueActionParser` | `actions/sdui_set_value_action.dart` | `setValue` que avisa a `boundText` |
 | `SduiRoutes` | `routing/sdui_routes.dart` | `/sdui/{name}` |
 
 No exportados (detalle de implementación): `StacRenderer`, `SduiAuthInterceptor`, `asJsonObject`.

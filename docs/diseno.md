@@ -63,7 +63,9 @@ Extender `SduiObserver` y pasarlo a `initialize` o `SduiConfig.observer`. Evento
 
 ## Parsers de la librería y parsers extra
 
-`sduiShare`, `barChart` y `sduiReload` se registran en `SduiClient.bootstrap`. Cualquier host que llame a `Sdui.initialize` los tiene, sin pasarlos en `extraActionParsers` / `extraWidgetParsers`.
+`sduiShare`, `barChart`, `sduiReload`, `boundText` y el `dropdownMenu` que escribe `id` en el formulario se registran en `SduiClient.bootstrap`. Cualquier host que llame a `Sdui.initialize` los tiene, sin pasarlos en `extraActionParsers` / `extraWidgetParsers`.
+
+`networkRequest` y `setValue` de la librería se registran al final y reemplazan los de Stac. El de red sustituye `{{response.formatted}}` en la acción del status antes de correrla. El de `setValue` guarda la clave y avisa a `boundText`. Stac 1.5 no hace ninguna de las dos cosas.
 
 Esos dos parámetros siguen siendo para widgets y acciones del host. Stac registra la lista con `override: true`: el último parser de un mismo `type` o `actionType` gana. Por eso los tres de la librería se registran después de los del host. Un extra con el mismo nombre no los tapa.
 
